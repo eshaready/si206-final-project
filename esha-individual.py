@@ -17,7 +17,7 @@ def create_database():
         Notes: For each week, get the top book [index 0] from the fiction & nonfiction list [list 0 and 1]
     Table 2: from https://api.nytimes.com/svc/books/v3/reviews.json?api_key={API_KEY}&isbn={ISBN}
         Reviews.
-        Columns: ISBN, Title (results[book_title]), Review_URL (from results[url])
+        Columns: ISBN, Title (results[book_title]), Review_URL (results[url]), Reviewer (byline)
     Table 3: from https://api.nytimes.com/svc/books/v3/lists/overview.json?published_date={date}&api_key={API_KEY}
         Books.
         Columns: ISBN (primary_isbn10), Title (title), Author (author), Description (description), Cover (book_image)
@@ -30,7 +30,7 @@ def create_database():
         "CREATE TABLE IF NOT EXISTS Bestsellers (Date INTEGER, ISBN INTEGER, PRIMARY KEY(Date, ISBN))"
     )
     cur.execute(
-        "CREATE TABLE IF NOT EXISTS Reviews (ISBN INTEGER, Title TEXT, Review_URL TEXT UNIQUE)"
+        "CREATE TABLE IF NOT EXISTS Reviews (ISBN INTEGER, Title TEXT, Review_URL TEXT UNIQUE, Reviewer TEXT)"
     )
     cur.execute(
         "CREATE TABLE IF NOT EXISTS Books (ISBN INTEGER PRIMARY KEY, Title TEXT, Author TEXT, Description TEXT, Cover TEXT)"
@@ -82,11 +82,12 @@ def insert_bestsellers_data(year, half, conn, cur):
 
     conn.commit()
 
+
 def insert_books_data(conn, cur):
     """Will insert detailed data for 25 of the books in the bestsellers list."""
     count = 0
     books = cur.execute(
-        "SELECT Date, ISBN FROM Bestsellers",  multi = True
+        "SELECT Date, ISBN FROM Bestsellers", multi = True
     )
     for row in books:
         date = row[0]
@@ -127,10 +128,60 @@ def insert_books_data(conn, cur):
             break
 
 
-
-
 def insert_reviews_data(conn, cur):
     """Will insert reviews data for 25 of the books in the bestsellers list."""
-    pass
-    
-    
+    count = 0
+    books = cur.execute(
+        "SELECT ISBN FROM Bestsellers", multi = True
+    )
+    for row in books:
+        isbn = row[0]
+
+        # Now check if the book data is already present in Books 
+        cur.execute(
+            "SELECT * FROM Reviews WHERE ISBN = ?", (isbn,)
+        )
+
+        should_break = False
+        for row in cur:
+            # If it goes in here then the data was already in books! So restart the loop w the next book
+            should_break = True
+        if should_break:
+            continue
+
+        # By here, the current book data wasn't already present. So add it
+        params = {"isbn": isbn}
+        r = requests.get("https://api.nytimes.com/svc/books/v3/reviews.json", params = params)
+        data = r.content
+        data = data["results"]
+        for result in data:
+            count += 1  # count needs to be here bc multiple reviews can be added per book
+            cur.execute(
+                "INSERT OR IGNORE INTO Reviews (ISBN, Title, Review_URL, Reviewer) VALUES (?,?,?)",
+                (isbn, result["book_title"], result["url"], result["byline"],)
+            )
+        conn.commit()
+        
+        if count >= 25:
+            break
+
+
+# ! MAIN 
+conn, cur = create_database()
+user_input = input("Do you want to add to the Bestsellers database by year [0], populate the Books database [1], or populate the Reviews database [2]? (q for quit) ")
+while user_input != "q":
+    if user_input == "0":
+        # Add to the Bestsellers database by year 
+        year = input("Enter a year between 2012-present (inclusive) (format YYYY) to gather data from: ")
+        half = input("Would you like to collect data from the first six months [0] or last six [1]: ")
+        insert_bestsellers_data(year, half, conn, cur)
+        print(f"Added data to the Bestsellers database for {year}!...\n")
+    elif user_input == "1":
+        # Populate the Books database 
+        insert_books_data(conn, cur)
+        print("Populated 25 books in the Books database!...\n")
+    elif user_input == "2":
+        # Populate the Reviews database 
+        insert_reviews_data(conn, cur)
+        print("Populated 25 reviews in the Reviews database!...\n")
+    user_input = input("Do you want to add to the Bestsellers database by year [0], populate the Books database [1], or populate the Reviews database [2]? (q for quit) ")
