@@ -1,3 +1,4 @@
+import time
 import requests
 import json
 import os
@@ -13,21 +14,22 @@ def create_database():
 
     Table 1: from https://api.nytimes.com/svc/books/v3/lists/overview.json?published_date={date}&api_key={API_KEY}
         Bestsellers. 
-        Columns: Date (bestsellers_date), ISBN (primary_isbn10)
-        Notes: For each week, get the top book [index 0] from the fiction & nonfiction list [list 0 and 1]
+        Columns: Date (bestsellers_date), Year, Month, ISBN (primary_isbn13)
+        Notes: For first week of each month, get the top book [index 0] from the fiction & nonfiction list [list 0 and 1]
+        First week of each month instead of every week due to rate-limit reasons
     Table 2: from https://api.nytimes.com/svc/books/v3/reviews.json?api_key={API_KEY}&isbn={ISBN}
         Reviews.
         Columns: ISBN, Title (results[book_title]), Review_URL (results[url]), Reviewer (byline)
     Table 3: from https://api.nytimes.com/svc/books/v3/lists/overview.json?published_date={date}&api_key={API_KEY}
         Books.
-        Columns: ISBN (primary_isbn10), Title (title), Author (author), Description (description), Cover (book_image)
+        Columns: ISBN (primary_isbn13), Title (title), Author (author), Description (description), Cover (book_image)
     """
     path = os.path.dirname(os.path.abspath(__file__))
     conn = sqlite3.connect(path + "/" + "books.db")
     cur = conn.cursor()
 
     cur.execute(
-        "CREATE TABLE IF NOT EXISTS Bestsellers (Date INTEGER, ISBN INTEGER, PRIMARY KEY(Date, ISBN))"
+        "CREATE TABLE IF NOT EXISTS Bestsellers (Date INTEGER, Year INTEGER, Month INTEGER, ISBN INTEGER, PRIMARY KEY(Date, ISBN))"
     )
     cur.execute(
         "CREATE TABLE IF NOT EXISTS Reviews (ISBN INTEGER, Title TEXT, Review_URL TEXT UNIQUE, Reviewer TEXT)"
@@ -38,11 +40,10 @@ def create_database():
 
     return conn, cur
 
-# Function to collect best-selling list and also reviews for those books for an inputted year
-def insert_bestsellers_data(year, half, conn, cur):
+
+def insert_bestsellers_data(year, conn, cur):
     """
-    Collect data for the given year (2012-present) (from the first six months [0] or the last six months [1], 
-    for 24 pieces of data per database total) and insert into the Bestsellers table.
+    Collect data for the given year (2012-present), for 12 pieces of data per database total and insert into the Bestsellers table.
     """
     # Collect data for the Bestsellers table
     # From https://api.nytimes.com/svc/books/v3/lists/overview.json?published_date={date}&api_key={API_KEY}
@@ -50,35 +51,28 @@ def insert_bestsellers_data(year, half, conn, cur):
     # The API goes to the closest in the future bestsellers list 
     # Year has to be 2012 or later because that's when Combined Print & E-Book Fiction is an option lol
 
-    # Getting months to query
-    if half == 0:
-        # First half of the year
-        months = ["01","02","03","04","05","06"]
-    else:
-        # Second half of the year
-        months = ["07","08","09","10","11","12"]
-
-    # Getting days to query 
-    days = ["01","07","14","21"]
+    months = ["01","02","03","04","05","06","07","08","09","10","11","12"]
     
     # Adding full, formatted dates to query to list
     dates = []
     for month in months:
-        for day in days:
-            date = f"{year}-{month}-{day}"
-            dates.append(date)
+        dates.append(f"{year}-{month}-01")
     
     # Send requests to the API 
     for date in dates:
-        params = {"published_date": date, "api_key": API_KEY}
+        params = {"published_date": date, "api-key": API_KEY}
         r = requests.get("https://api.nytimes.com/svc/books/v3/lists/overview.json", params = params)
         data = r.content
+        data = json.loads(data)
         data = data["results"]
         # Now insert that data into the table
         cur.execute(
-            "INSERT OR IGNORE INTO Bestsellers (Date, ISBN) VALUES (?,?)",
-            (data["bestsellers_date"], data["lists"][0]["books"][0]["primary_isbn10"], )
+            "INSERT OR IGNORE INTO Bestsellers (Date, Year, Month, ISBN) VALUES (?,?,?,?)",
+            (data["bestsellers_date"], data["bestsellers_date"][0:4], data["bestsellers_date"][5:7], data["lists"][0]["books"][0]["primary_isbn13"], )
         )
+        print("Finished adding a row! Now cooling down between requests...", data["bestsellers_date"], data["bestsellers_date"][0:4],
+               data["bestsellers_date"][5:7], data["lists"][0]["books"][0]["primary_isbn13"])
+        time.sleep(12)
 
     conn.commit()
 
@@ -106,26 +100,29 @@ def insert_books_data(conn, cur):
 
         # By here, the current book data wasn't already present. So add it
         count += 1
-        params = {"published_date": date, "api_key": API_KEY}
+        params = {"published_date": date, "api-key": API_KEY}
         r = requests.get("https://api.nytimes.com/svc/books/v3/lists/overview.json", params = params)
         data = r.content
+        data = json.loads(data)
         data = data["results"]
         cur_book = data["lists"][0]["books"][0]
 
         # Known that this is the book that got added to Bestsellers. But sanity check! 
-        if cur_book["primary_isbn10"] != isbn:
+        if cur_book["primary_isbn13"] != isbn:
             print("Error!! The book being added to books isn't correct!")
             break
 
         # Now finally, add more info about it to Books
         cur.execute(
             "INSERT OR IGNORE INTO Books (ISBN, Title, Author, Description, Cover) VALUES (?,?,?,?,?)",
-            (cur_book["primary_isbn10"], cur_book["title"], cur_book["author"], cur_book["description"], cur_book["book_image"], )
+            (cur_book["primary_isbn13"], cur_book["title"], cur_book["author"], cur_book["description"], cur_book["book_image"], )
         )
         conn.commit()
 
         if count >= 25:
             break
+        print("Finished adding a row! Now cooling down between requests...", count, isbn)
+        time.sleep(12)
 
 
 def insert_reviews_data(conn, cur):
@@ -150,9 +147,13 @@ def insert_reviews_data(conn, cur):
             continue
 
         # By here, the current book data wasn't already present. So add it
-        params = {"isbn": isbn}
+        params = {"isbn": isbn, "api-key": API_KEY}
         r = requests.get("https://api.nytimes.com/svc/books/v3/reviews.json", params = params)
         data = r.content
+        data = json.loads(data)
+        if data.get("fault", None) is not None:
+            print("API quota reached :()")
+            continue
         data = data["results"]
         for result in data:
             count += 1  # count needs to be here bc multiple reviews can be added per book
@@ -164,6 +165,8 @@ def insert_reviews_data(conn, cur):
         
         if count >= 25:
             break
+        print("Finished adding a row! Now cooling down between requests...", count, isbn)
+        time.sleep(12)
 
 
 # ! MAIN 
@@ -173,8 +176,7 @@ while user_input != "q":
     if user_input == "0":
         # Add to the Bestsellers database by year 
         year = input("Enter a year between 2012-present (inclusive) (format YYYY) to gather data from: ")
-        half = input("Would you like to collect data from the first six months [0] or last six [1]: ")
-        insert_bestsellers_data(year, half, conn, cur)
+        insert_bestsellers_data(year, conn, cur)
         print(f"Added data to the Bestsellers database for {year}!...\n")
     elif user_input == "1":
         # Populate the Books database 
