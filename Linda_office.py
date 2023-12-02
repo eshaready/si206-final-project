@@ -1,7 +1,5 @@
 import requests
 from bs4 import BeautifulSoup as bs
-import pandas as pd
-import os
 import sqlite3
 
 # Connect to SQLite database 1
@@ -15,21 +13,6 @@ cursor.execute('''
         title TEXT UNIQUE
     )
 ''')
-
-# Create BoxOffice table
-cursor.execute('''
-    CREATE TABLE IF NOT EXISTS BoxOffice (
-        box_id INTEGER PRIMARY KEY AUTOINCREMENT,
-        movie_id INTEGER,
-        worldwide TEXT,
-        domestic TEXT,
-        domestic_percent TEXT,
-        foreign_ TEXT,
-        foreign_percent TEXT,
-        FOREIGN KEY(movie_id) REFERENCES Movies(movie_id)
-    )
-''')
-
 conn.commit()
 
 def get_box_office_page(year_url):
