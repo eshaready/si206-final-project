@@ -4,7 +4,7 @@ import pandas as pd
 import os
 import sqlite3
 
-# Connect to SQLite database
+# Connect to SQLite database 1
 conn = sqlite3.connect('box_office.db')
 cursor = conn.cursor()
 
