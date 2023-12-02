@@ -2,61 +2,59 @@ import requests
 from bs4 import BeautifulSoup as bs
 import sqlite3
 
-# Connect to SQLite database 1
+# Connect to SQLite database
 conn = sqlite3.connect('box_office.db')
 cursor = conn.cursor()
 
-# Create Movies table
+# Recreate the table with a composite UNIQUE constraint
 cursor.execute('''
-    CREATE TABLE IF NOT EXISTS Movies (
-        movie_id INTEGER PRIMARY KEY AUTOINCREMENT,
-        title TEXT UNIQUE
+    CREATE TABLE TopMonthlyReleases (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        year TEXT,
+        month TEXT,
+        title TEXT,
+        gross TEXT,
+        UNIQUE(year, month, title)
     )
 ''')
 conn.commit()
 
-def get_box_office_page(year_url):
-    response = requests.get(year_url)
+def get_box_office_page(url):
+    response = requests.get(url)
     if response.status_code != 200:
-        raise Exception('Failed to load page {}'.format(year_url))
+        raise Exception('Failed to load page {}'.format(url))
     return bs(response.text, 'html.parser')
 
-def get_box_office_info(tr_tags):
-    # Find all the td tags in the tr tags
-    td_tags = tr_tags.find_all('td')
-    # Create variable which contains the box office information
-    Title = td_tags[1].text
-    Worldwide = td_tags[2].text
-    Domestic = td_tags[3].text
-    Domestic_percent = td_tags[4].text
-    Foreign = td_tags[5].text
-    Foreign_percent = td_tags[6].text
-    return Title, Worldwide, Domestic, Domestic_percent, Foreign, Foreign_percent
-def scrape_info(year_url):
-    box_doc = get_box_office_page(year_url)
-    box_office = box_doc.find_all('tr')[1:26]  # Adjust the slicing as needed
+def get_box_office_info(tr_tag, year, month):
+    # Parsing the table row
+    td_tags = tr_tag.find_all('td')
+    if len(td_tags) < 7:  # Adjust based on the website's table structure
+        return None
 
-    for tr in box_office:
-        info = get_box_office_info(tr)
-        title, worldwide, domestic, domestic_percent, foreign_, foreign_percent = info
-        # Check if the title already exists in the Movies table
-        cursor.execute("SELECT movie_id FROM Movies WHERE title = ?", (title,))
-        result = cursor.fetchone()
+    title = td_tags[2].text.strip()
+    gross = td_tags[3].text.strip()
+    return year, month, title, gross
 
-        if result is None:
-            # Insert new movie record
-            cursor.execute("INSERT INTO Movies (title) VALUES (?)", (title,))
-            movie_id = cursor.lastrowid
-        else:
-            movie_id = result[0]
+def scrape_info(url, year, month):
+    box_doc = get_box_office_page(url)
+    box_office_rows = box_doc.find_all('tr')[1:]
 
-        # Insert into BoxOffice table
-        cursor.execute('''INSERT INTO BoxOffice (movie_id, worldwide, domestic, 
-                        domestic_percent, "foreign_", foreign_percent) 
-                        VALUES (?, ?, ?, ?, ?, ?)''', 
-                        (movie_id, worldwide, domestic, domestic_percent, foreign_, foreign_percent))
-
+    for tr in box_office_rows:
+        info = get_box_office_info(tr, year, month)
+        if info:
+            year, month, title, gross = info
+            cursor.execute("SELECT id FROM TopMonthlyReleases WHERE year = ? AND month = ? AND title = ?", (year, month, title))
+            if cursor.fetchone() is None:
+                cursor.execute("INSERT INTO TopMonthlyReleases (year, month, title, gross) VALUES (?, ?, ?, ?)", (year, month, title, gross))
     conn.commit()
 
-year_url = 'https://www.boxofficemojo.com/year/world/2022/'  # Example URL
-scrape_info(year_url)
+# Scrape data for each month and year
+years = range(2012, 2023)  # From 2012 to 2022
+months = ['january', 'february', 'march']  # Extend this list to include all months
+for year in years:
+    for month in months:
+        url = f'https://www.boxofficemojo.com/month/{month}/{year}/?grossesOption=calendarGrosses'
+        scrape_info(url, str(year), month.capitalize())
+
+# Close the connection
+conn.close()
