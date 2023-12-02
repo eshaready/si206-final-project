@@ -12,7 +12,9 @@ def write_monthly_data_to_db():
     # Create a table if it doesn't exist with month as INTEGER PRIMARY KEY
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS monthly_averages (
-            month INTEGER PRIMARY KEY,
+            date INTEGER PRIMARY KEY,
+            year INTEGER,
+            month INTEGER,
             tempmax REAL,
             tempmin REAL,
             temp REAL,
@@ -26,9 +28,9 @@ def write_monthly_data_to_db():
         reader = csv.DictReader(csvfile)
         for row in reader:
             cursor.execute('''
-                INSERT OR IGNORE INTO monthly_averages (month, tempmax, tempmin, temp, precip)
-                VALUES (?, ?, ?, ?, ?)
-            ''', (row['month'], row['tempmax'], row['tempmin'], row['temp'], row['precip']))
+                INSERT OR IGNORE INTO monthly_averages (date, year, month, tempmax, tempmin, temp, precip)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            ''', (row['date'], row['year'], row['month'], row['tempmax'], row['tempmin'], row['temp'], row['precip']))
             if cursor.rowcount > 0:
                 inserted_rows += 1
             if inserted_rows >= 12: # stop after 12 months of data
