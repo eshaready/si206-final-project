@@ -101,7 +101,7 @@ def insert_books_data(conn, cur):
             # If it goes in here then the data was already in books! So restart the loop w the next book
             should_break = True
         if should_break:
-            print(f"{isbn} already in the database! Going to next book...")
+            # print(f"{isbn} already in the database! Going to next book...")
             continue
 
         # By here, the current book data wasn't already present. So add it
@@ -155,7 +155,7 @@ def insert_reviews_data(conn, cur):
             # If it goes in here then the data was already in books! So restart the loop w the next book
             should_break = True
         if should_break:
-            print(f"{isbn} already in the database! Going to next book...")
+            # print(f"{isbn} already in the database! Going to next book...")
             continue
 
         # By here, the current book data wasn't already present. So add it
@@ -178,7 +178,7 @@ def insert_reviews_data(conn, cur):
         
         if count >= 25:
             break
-        print("Finished adding a row! Now cooling down between requests...", count, isbn)
+        print("Finished inquiring a book! Now cooling down between requests...", count, isbn)
         time.sleep(12)
 
 
