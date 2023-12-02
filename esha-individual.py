@@ -14,7 +14,7 @@ def create_database():
 
     Table 1: from https://api.nytimes.com/svc/books/v3/lists/overview.json?published_date={date}&api_key={API_KEY}
         Bestsellers. 
-        Columns: Date (bestsellers_date), Year, Month, ISBN (primary_isbn13)
+        Columns: Date (published_date), Year, Month, ISBN (primary_isbn13)
         Notes: For first week of each month, get the top book [index 0] from the fiction & nonfiction list [list 0 and 1]
         First week of each month instead of every week due to rate-limit reasons
     Table 2: from https://api.nytimes.com/svc/books/v3/reviews.json?api_key={API_KEY}&isbn={ISBN}
@@ -64,14 +64,18 @@ def insert_bestsellers_data(year, conn, cur):
         r = requests.get("https://api.nytimes.com/svc/books/v3/lists/overview.json", params = params)
         data = r.content
         data = json.loads(data)
+        if data.get("results", None) is None:
+            print("Error :(", data)
+            time.sleep(12)
+            continue
         data = data["results"]
         # Now insert that data into the table
         cur.execute(
             "INSERT OR IGNORE INTO Bestsellers (Date, Year, Month, ISBN) VALUES (?,?,?,?)",
-            (data["bestsellers_date"], data["bestsellers_date"][0:4], data["bestsellers_date"][5:7], data["lists"][0]["books"][0]["primary_isbn13"], )
+            (data["published_date"], data["published_date"][0:4], data["published_date"][5:7], data["lists"][0]["books"][0]["primary_isbn13"], )
         )
-        print("Finished adding a row! Now cooling down between requests...", data["bestsellers_date"], data["bestsellers_date"][0:4],
-               data["bestsellers_date"][5:7], data["lists"][0]["books"][0]["primary_isbn13"])
+        print("Finished adding a row! Now cooling down between requests...", data["published_date"], data["published_date"][0:4],
+               data["published_date"][5:7], data["lists"][0]["books"][0]["primary_isbn13"])
         time.sleep(12)
 
     conn.commit()
@@ -81,21 +85,23 @@ def insert_books_data(conn, cur):
     """Will insert detailed data for 25 of the books in the bestsellers list."""
     count = 0
     books = cur.execute(
-        "SELECT Date, ISBN FROM Bestsellers", multi = True
+        "SELECT Date, ISBN FROM Bestsellers"
     )
     for row in books:
         date = row[0]
         isbn = row[1]
+        print("Working on", isbn)
         # Now check if the book data is already present in Books 
-        cur.execute(
+        present = conn.execute(
             "SELECT * FROM Books WHERE ISBN = ?", (isbn,)
-        )
+        ).fetchall()
 
         should_break = False
-        for row in cur:
+        for _ in present:
             # If it goes in here then the data was already in books! So restart the loop w the next book
             should_break = True
         if should_break:
+            print(f"{isbn} already in the database! Going to next book...")
             continue
 
         # By here, the current book data wasn't already present. So add it
@@ -104,16 +110,20 @@ def insert_books_data(conn, cur):
         r = requests.get("https://api.nytimes.com/svc/books/v3/lists/overview.json", params = params)
         data = r.content
         data = json.loads(data)
+        if data.get("results", None) is None:
+            print("Error :(", data)
+            time.sleep(12)
+            continue
         data = data["results"]
         cur_book = data["lists"][0]["books"][0]
 
         # Known that this is the book that got added to Bestsellers. But sanity check! 
-        if cur_book["primary_isbn13"] != isbn:
-            print("Error!! The book being added to books isn't correct!")
-            break
+        if str(cur_book["primary_isbn13"]) != str(isbn):
+            print("Error!! The book being added to books isn't correct!", cur_book["primary_isbn13"], isbn)
+            continue
 
         # Now finally, add more info about it to Books
-        cur.execute(
+        conn.execute(
             "INSERT OR IGNORE INTO Books (ISBN, Title, Author, Description, Cover) VALUES (?,?,?,?,?)",
             (cur_book["primary_isbn13"], cur_book["title"], cur_book["author"], cur_book["description"], cur_book["book_image"], )
         )
@@ -129,21 +139,23 @@ def insert_reviews_data(conn, cur):
     """Will insert reviews data for 25 of the books in the bestsellers list."""
     count = 0
     books = cur.execute(
-        "SELECT ISBN FROM Bestsellers", multi = True
+        "SELECT ISBN FROM Bestsellers"
     )
     for row in books:
         isbn = row[0]
+        print("Working on", isbn)
 
         # Now check if the book data is already present in Books 
-        cur.execute(
+        present = conn.execute(
             "SELECT * FROM Reviews WHERE ISBN = ?", (isbn,)
-        )
+        ).fetchall()
 
         should_break = False
-        for row in cur:
+        for _ in present:
             # If it goes in here then the data was already in books! So restart the loop w the next book
             should_break = True
         if should_break:
+            print(f"{isbn} already in the database! Going to next book...")
             continue
 
         # By here, the current book data wasn't already present. So add it
@@ -151,14 +163,15 @@ def insert_reviews_data(conn, cur):
         r = requests.get("https://api.nytimes.com/svc/books/v3/reviews.json", params = params)
         data = r.content
         data = json.loads(data)
-        if data.get("fault", None) is not None:
-            print("API quota reached :()")
+        if data.get("results", None) is None:
+            print("Error :(", data)
+            time.sleep(12)
             continue
         data = data["results"]
         for result in data:
             count += 1  # count needs to be here bc multiple reviews can be added per book
-            cur.execute(
-                "INSERT OR IGNORE INTO Reviews (ISBN, Title, Review_URL, Reviewer) VALUES (?,?,?)",
+            conn.execute(
+                "INSERT OR IGNORE INTO Reviews (ISBN, Title, Review_URL, Reviewer) VALUES (?,?,?,?)",
                 (isbn, result["book_title"], result["url"], result["byline"],)
             )
         conn.commit()
