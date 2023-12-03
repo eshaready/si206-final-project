@@ -8,7 +8,7 @@ cursor = conn.cursor()
 
 # Recreate the table with a composite UNIQUE constraint
 cursor.execute('''
-    CREATE TABLE TopMonthlyReleases (
+    CREATE TABLE IF NOT EXISTS TopMonthlyReleases (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         year TEXT,
         month TEXT,
@@ -22,39 +22,54 @@ conn.commit()
 def get_box_office_page(url):
     response = requests.get(url)
     if response.status_code != 200:
-        raise Exception('Failed to load page {}'.format(url))
+        raise Exception(f'Failed to load page {url}')
     return bs(response.text, 'html.parser')
 
-def get_box_office_info(tr_tag, year, month):
-    # Parsing the table row
-    td_tags = tr_tag.find_all('td')
-    if len(td_tags) < 7:  # Adjust based on the website's table structure
-        return None
+def get_box_office_info(tr_tag, month):
+    year, title, gross = None, None, None
+    # Extracting the year
+    year_tag = tr_tag.find('td', class_="a-text-left mojo-header-column mojo-truncate mojo-field-type-year mojo-sort-column")
+    if year_tag:
+        year = year_tag.get_text(strip=True)
 
-    title = td_tags[2].text.strip()
-    gross = td_tags[3].text.strip()
+    # Extracting the title
+    title_tag = tr_tag.find('td', class_="a-text-left mojo-field-type-release mojo-cell-wide")
+    if not title_tag:
+        return None
+    title = title_tag.get_text(strip=True)
+
+    # Extracting the gross value
+    gross_tag = tr_tag.find('td', class_="a-text-right mojo-field-type-money")
+    if not gross_tag:
+        return None
+    gross = gross_tag.get_text(strip=True)
+
     return year, month, title, gross
 
-def scrape_info(url, year, month):
+def scrape_info(url, month):
     box_doc = get_box_office_page(url)
-    box_office_rows = box_doc.find_all('tr')[1:]
+    box_office_rows = box_doc.find_all('tr')[1:13]  # Assuming the first row is not data
 
     for tr in box_office_rows:
-        info = get_box_office_info(tr, year, month)
-        if info:
-            year, month, title, gross = info
+        if get_box_office_info(tr, month):
+            year, month, title, gross = get_box_office_info(tr, month)
             cursor.execute("SELECT id FROM TopMonthlyReleases WHERE year = ? AND month = ? AND title = ?", (year, month, title))
             if cursor.fetchone() is None:
                 cursor.execute("INSERT INTO TopMonthlyReleases (year, month, title, gross) VALUES (?, ?, ?, ?)", (year, month, title, gross))
+            else:
+                print(f"Duplicate found, not inserting: {year}, {month}, {title}")  # Debugging for duplicates
     conn.commit()
 
 # Scrape data for each month and year
-years = range(2012, 2023)  # From 2012 to 2022
-months = ['january', 'february', 'march']  # Extend this list to include all months
-for year in years:
-    for month in months:
-        url = f'https://www.boxofficemojo.com/month/{month}/{year}/?grossesOption=calendarGrosses'
-        scrape_info(url, str(year), month.capitalize())
+months = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'november', 'october', 'december']  # Extend this list to include all months
+for month in months:
+    url = f'https://www.boxofficemojo.com/month/{month}/?grossesOption=calendarGrosses&sort=year'
+    scrape_info(url, month.capitalize())
+
+cursor.execute("SELECT year, month, title, gross FROM TopMonthlyReleases ORDER BY year, month")
+print("Top Grossing Titles Each Month (2012-2022):")
+for row in cursor.fetchall():
+    print(f"Year: {row[0]}, Month: {row[1]}, Title: {row[2]}, Gross: {row[3]}")
 
 # Close the connection
 conn.close()
