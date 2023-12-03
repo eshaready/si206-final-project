@@ -2,6 +2,7 @@ import requests
 from bs4 import BeautifulSoup as bs
 import sqlite3
 
+#Finished
 # Connect to SQLite database
 conn = sqlite3.connect('box_office.db')
 cursor = conn.cursor()
