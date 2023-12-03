@@ -2,12 +2,12 @@ import csv
 import sqlite3
 
 def calculate_temp_difference():
+
     # Read data from averaged_by_year.csv
     with open('averaged_by_year.csv', 'r') as csvfile:
         reader = csv.DictReader(csvfile)
         data = list(reader)
 
-    # Connect to the SQLite database
     conn = sqlite3.connect('bell.db')
     cursor = conn.cursor()
 

@@ -2,7 +2,6 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-# Read data from averaged_by_year.csv
 df = pd.read_csv('averaged_by_year.csv')
 
 # Set up the matplotlib figure
@@ -19,8 +18,5 @@ plt.xlabel('Year')
 plt.ylabel('Value')
 plt.title('Temperature and Precipitation Trends by Year')
 
-# Display legend
 plt.legend()
-
-# Show the plot
 plt.show()

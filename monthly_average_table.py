@@ -5,11 +5,9 @@ import sqlite3
 # writes to the monthly averages table in the database
 
 def write_monthly_data_to_db():
-    # Connect to the SQLite database
     conn = sqlite3.connect('bell.db')
     cursor = conn.cursor()
 
-    # Create a table if it doesn't exist with month as INTEGER PRIMARY KEY
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS monthly_averages (
             date INTEGER PRIMARY KEY,
@@ -35,7 +33,6 @@ def write_monthly_data_to_db():
                 inserted_rows += 1
             if inserted_rows >= 12: # stop after 12 months of data
                 break
-    # Commit changes, and close the connection
     conn.commit()
     conn.close()
 

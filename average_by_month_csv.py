@@ -2,7 +2,6 @@ import csv
 from collections import defaultdict
 from datetime import datetime
 
-
 # creates an average_by_month csv file
 def average_by_month():
     # Initialize dictionaries to store monthly data with each month having the following dict as default value

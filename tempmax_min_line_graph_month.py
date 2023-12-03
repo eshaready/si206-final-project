@@ -3,7 +3,6 @@ import matplotlib.pyplot as plt
 
 monthly_average_df = pd.read_csv('averaged_by_month.csv')
 
-# Plotting using matplotlib
 plt.figure(figsize=(10, 6))
 plt.plot(monthly_average_df['month'], monthly_average_df['tempmax'], label='Average TempMax', marker='o')
 plt.plot(monthly_average_df['month'], monthly_average_df['tempmin'], label='Average TempMin', marker='o')
