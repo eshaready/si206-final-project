@@ -29,11 +29,34 @@ def join_data(year):
         JOIN monthly_averages ON books.Bestsellers.Year = monthly_averages.year 
         AND books.Bestsellers.Month = monthly_averages.month WHERE books.Bestsellers.year = ?
     ''', (year,))
-    # Need to calculate something based on this; for now just printing
+
+    data = []
+    # 0 year, 1 month, 2 book title, 3 book author, 4 book description, 5 book cover, 6 box office title, 7 box office gross, 
+    # 8 monthly max temp avg, 9 monthly min temp avg, 10 monthly temp avg, 11 monthly precipitation avg
     for row in cur:
-        print(row)
+        data.append({"year": row[0], "month": row[1], "book title": row[2], "book author": row[3], "book desc": row[4], 
+                    "book cover": row[5], "box office title": row[6], "box office gross": row[7], "monthly max temp avg": row[8], 
+                    "monthly min temp avg": row[9], "monthly temp avg": row[10], "monthly precip avg": row[11]})
+    return data
+
+def calculate_data(data):
+    """
+    Calculations: 
+    1: Month | Average gross per month | Min ISBN that month | Max ISBN that month | Monthly temperature average | Monthly precipitation average
+    2: Year | Average gross per year | Min ISBN that year | Max ISBN that year | Average ISBN that year | Yearly temp average 
+    """
+    # 1
+    monthly_data = {}
+    for _ in range(0, 12)
+    with open("joined_data_monthly_calculations.csv", "w", newline='') as f:
+        headers = ["Month", "Avg gross", "Min ISBN", "Max ISBN", "Temp avg", "Precip avg"]
+
 
 
 # ! MAIN 
 attach_databases()
-join_data(2012)
+
+years = [2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022]
+data = []
+for year in years:
+    data.append(join_data(year))
