@@ -16,6 +16,43 @@ def attach_databases():
         "ATTACH DATABASE 'box_office.db' AS box_office"
     )
     # Weather data is already in there as its own table
+
+    # Copy tables from books.db to bell.db 
+    cur.execute(
+        "CREATE TABLE IF NOT EXISTS Bestsellers (Date INTEGER, Year INTEGER, Month INTEGER, ISBN INTEGER, PRIMARY KEY(Date, ISBN))"
+    )
+    cur.execute(
+        "CREATE TABLE IF NOT EXISTS Reviews (ISBN INTEGER, Title TEXT, Review_URL TEXT UNIQUE, Reviewer TEXT)"
+    )
+    cur.execute(
+        "CREATE TABLE IF NOT EXISTS Books (ISBN INTEGER PRIMARY KEY, Title TEXT, Author TEXT, Description TEXT, Cover TEXT)"
+    )
+    cur.execute(
+        "INSERT OR IGNORE INTO Bestsellers (Date, Year, Month, ISBN) SELECT * FROM Books.Bestsellers"
+    )
+    cur.execute(
+        "INSERT OR IGNORE INTO Books (ISBN, Title, Author, Description, Cover) SELECT * FROM Books.Books"
+    )
+    cur.execute(
+        "INSERT OR IGNORE INTO Reviews (ISBN, Title, Review_URL, Reviewer) SELECT * FROM Books.Reviews"
+    )
+
+    # Copy table from box_office.db to bell.db 
+    cur.execute('''
+    CREATE TABLE IF NOT EXISTS TopMonthlyReleases (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        year INTEGER,
+        month INTEGER,
+        title TEXT,
+        gross TEXT,
+        UNIQUE(year, month, title)
+    )
+    ''')
+    cur.execute('''
+        INSERT OR IGNORE INTO TopMonthlyReleases (year, month, title, gross) SELECT box_office.TopMonthlyReleases.year,
+        box_office.TopMonthlyReleases.month, box_office.TopMonthlyReleases.title, box_office.TopMonthlyReleases.gross 
+        FROM box_office.TopMonthlyReleases
+    ''')
     conn.commit()
 
 def join_data(year):
@@ -27,14 +64,14 @@ def join_data(year):
     ''')
 
     cur.execute('''
-        SELECT books.Bestsellers.Year, books.Bestsellers.Month, books.Books.ISBN, books.Books.Title, books.Books.Author, 
-        books.Books.Description, books.Books.Cover, box_office.TopMonthlyReleases.title, box_office.TopMonthlyReleases.gross, 
+        SELECT Bestsellers.Year, Bestsellers.Month, Books.ISBN, Books.Title, Books.Author, 
+        Books.Description, Books.Cover, TopMonthlyReleases.title, TopMonthlyReleases.gross, 
         monthly_averages.tempmax, monthly_averages.tempmin, monthly_averages.temp, monthly_averages.precip
-        FROM books.Bestsellers JOIN books.Books ON books.Bestsellers.ISBN = books.Books.ISBN 
-        JOIN box_office.TopMonthlyReleases ON books.Bestsellers.Year = box_office.TopMonthlyReleases.year 
-        AND books.Bestsellers.Month = box_office.TopMonthlyReleases.month 
-        JOIN monthly_averages ON books.Bestsellers.Year = monthly_averages.year 
-        AND books.Bestsellers.Month = monthly_averages.month WHERE books.Bestsellers.year = ?
+        FROM Bestsellers JOIN Books ON Bestsellers.ISBN = Books.ISBN 
+        JOIN TopMonthlyReleases ON Bestsellers.Year = TopMonthlyReleases.year 
+        AND Bestsellers.Month = TopMonthlyReleases.month 
+        JOIN monthly_averages ON Bestsellers.Year = monthly_averages.year 
+        AND Bestsellers.Month = monthly_averages.month WHERE Bestsellers.year = ?
     ''', (year,))
 
     data = []
