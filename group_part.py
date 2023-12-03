@@ -96,7 +96,7 @@ def join_data(year):
 def calculate_data(data):
     """
     Calculations: 
-    1: Month | Average gross per month | ISBNs | Monthly temperature average | Monthly precipitation average
+    1: Month | Average gross per month | Titles | Monthly temperature average | Monthly precipitation average
     2: Year | Average gross per year | Min ISBN that year | Max ISBN that year | Yearly temp average 
     """
     # 1
@@ -109,9 +109,9 @@ def calculate_data(data):
             gross_sum += year[i]["box office gross"]
 
         # Gather ISBNs
-        isbns = []
+        titles = []
         for year in data:
-            isbns.append(year[i]["isbn"])
+            titles.append(year[i]["book title"])
         
         # Calculate average temperature per month 
         temp_sum = 0
@@ -125,12 +125,12 @@ def calculate_data(data):
         
         monthly_data.append({"Month": months[i],
                              "Avg gross": gross_sum / len(data),
-                             "ISBNs": isbns,
+                             "Book titles": titles,
                              "Temp avg": temp_sum / len(data),
                              "Precip avg": precip_sum / len(data)})
 
     with open("joined_data_monthly_calculations.csv", "w", newline='') as f:
-        headers = ["Month", "Avg gross", "ISBNs", "Temp avg", "Precip avg"]
+        headers = ["Month", "Avg gross", "Book titles", "Temp avg", "Precip avg"]
         writer = csv.DictWriter(f, fieldnames=headers)
         writer.writeheader()
         for row in monthly_data:
@@ -139,12 +139,40 @@ def calculate_data(data):
     # 2
     yearly_data = []
     years = [2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022]
-    for i in range(0, len(years)):
+    for y in range(0, len(years)):
         # Calculate avg gross per year
+        gross_sum = 0
+        for m in range(0, 12):
+            # looping through months in data[i]
+            gross_sum += data[y][m]["box office gross"]
+
         # Calculate min isbn that year 
         # Calculate max isbn that year 
+        min_isbn = data[y][0]["isbn"]
+        max_isbn = data[y][0]["isbn"]
+        for m in range(1, 12):
+            if data[y][m]["isbn"] < min_isbn:
+                min_isbn = data[y][m]["isbn"]
+            if data[y][m]["isbn"] > max_isbn:
+                max_isbn = data[y][m]["isbn"]
+
         # Calculate yearly temp avg 
-        pass
+        temp_sum = 0
+        for m in range(0, 12):
+            temp_sum += data[y][m]["monthly temp avg"]
+        
+        yearly_data.append({"Year": years[y],
+                            "Avg gross": gross_sum / 12,
+                            "Min ISBN": min_isbn,
+                            "Max ISBN": max_isbn,
+                            "Avg temp": temp_sum / 12})
+
+    with open("joined_data_yearly_calculations.csv", "w", newline='') as f:
+        headers = ["Year", "Avg gross", "Min ISBN", "Max ISBN", "Avg temp"]
+        writer = csv.DictWriter(f, fieldnames=headers)
+        writer.writeheader()
+        for row in yearly_data:
+            writer.writerow(row)
 
 
 # ! MAIN 
