@@ -3,11 +3,12 @@ from bs4 import BeautifulSoup as bs
 import sqlite3
 
 #Finished
-# Connect to SQLite database
+# Connect to the SQLite database and create a cursor object
 conn = sqlite3.connect('box_office.db')
 cursor = conn.cursor()
 
-# Recreate the table with a composite UNIQUE constraint
+# Create a table named 'TopMonthlyReleases' in the database if it doesn't already exist.
+# The table includes a UNIQUE constraint to avoid duplicate entries
 cursor.execute('''
     CREATE TABLE IF NOT EXISTS TopMonthlyReleases (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -21,12 +22,20 @@ cursor.execute('''
 conn.commit()
 
 def get_box_office_page(url):
+    """
+    Fetches and returns the HTML content of a given box office page URL.
+    Throws an exception if the page loading fails.
+    """
     response = requests.get(url)
     if response.status_code != 200:
         raise Exception(f'Failed to load page {url}')
     return bs(response.text, 'html.parser')
 
 def get_box_office_info(tr_tag, month):
+    """
+    Extracts and returns the year, month, movie title, and gross revenue from a table row (tr tag).
+    Returns None for title or gross if the relevant data is not found.
+    """
     year, title, gross = None, None, None
     # Extracting the year
     year_tag = tr_tag.find('td', class_="a-text-left mojo-header-column mojo-truncate mojo-field-type-year mojo-sort-column")
@@ -48,6 +57,10 @@ def get_box_office_info(tr_tag, month):
     return year, month, title, gross
 
 def scrape_info(url, month):
+    """
+    Scrapes box office data for a given month from the provided URL.
+    Inserts new data into the SQLite database and avoids duplicates.
+    """
     box_doc = get_box_office_page(url)
     box_office_rows = box_doc.find_all('tr')[1:13]  # Assuming the first row is not data
 
@@ -63,6 +76,9 @@ def scrape_info(url, month):
     conn.commit()
 
 def month_string_to_int(month):
+    """
+    Converts a month's name (string) to its corresponding numerical representation.
+    """
     if month == "January":
         return 1
     if month == "February":
@@ -88,13 +104,16 @@ def month_string_to_int(month):
     if month == "December":
         return 12
 
-# Scrape data for each month and year
 months = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'november', 'october', 'december']  # Extend this list to include all months
 
+# Prompt the user to input a month name, construct the URL for the Box Office Mojo page 
+# for that month, and call the 'scrape_info' function to scrape and store box office data 
+# for the specified month.
 month = input("Choose a month to gather data for (lowercase, full month name):")
 url = f'https://www.boxofficemojo.com/month/{month}/?grossesOption=calendarGrosses&sort=year'
 scrape_info(url, month.capitalize())
 
+# Retrieve and display scraped data from the database
 cursor.execute("SELECT year, month, title, gross FROM TopMonthlyReleases WHERE month = ? ORDER BY year, month", (month_string_to_int(month.capitalize()),))
 print("Top Grossing Titles Each Month (2012-2022):")
 for row in cursor:

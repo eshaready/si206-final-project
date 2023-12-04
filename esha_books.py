@@ -23,6 +23,8 @@ def create_database():
     Table 3: from https://api.nytimes.com/svc/books/v3/lists/overview.json?published_date={date}&api_key={API_KEY}
         Books.
         Columns: ISBN (primary_isbn13), Title (title), Author (author), Description (description), Cover (book_image)
+
+    No input/output. 
     """
     path = os.path.dirname(os.path.abspath(__file__))
     conn = sqlite3.connect(path + "/" + "books.db")
@@ -43,7 +45,11 @@ def create_database():
 
 def insert_bestsellers_data(year, conn, cur):
     """
-    Collect data for the given year (2012-present), for 12 pieces of data per database total and insert into the Bestsellers table.
+    Collect data for the given year (2012-present), for 12 pieces of data per database total and insert into the 
+    Bestsellers table.
+
+    Input: year for which to collect data, connection and cursor objects.
+    Output: none.
     """
     # Collect data for the Bestsellers table
     # From https://api.nytimes.com/svc/books/v3/lists/overview.json?published_date={date}&api_key={API_KEY}
@@ -82,7 +88,12 @@ def insert_bestsellers_data(year, conn, cur):
 
 
 def insert_books_data(conn, cur):
-    """Will insert detailed data for 25 of the books in the bestsellers list."""
+    """
+    Will insert detailed data for 25 of the books in the bestsellers list.
+
+    Input: connection and cursor objects.
+    Output: none.
+    """
     count = 0
     books = cur.execute(
         "SELECT Date, ISBN FROM Bestsellers"
@@ -136,7 +147,11 @@ def insert_books_data(conn, cur):
 
 
 def insert_reviews_data(conn, cur):
-    """Will insert reviews data for 25 of the books in the bestsellers list."""
+    """
+    Will insert reviews data for 25 of the books in the bestsellers list.
+    Input: connection and cursor objects.
+    Output: none.
+    """
     count = 0
     books = cur.execute(
         "SELECT ISBN FROM Bestsellers"

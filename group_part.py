@@ -7,6 +7,10 @@ conn = sqlite3.connect(path + "/" + "bell.db")
 cur = conn.cursor()
 
 def attach_databases():
+    """
+    Attach the databases/import the tables into the overall database.
+    No inputs or outputs.
+    """
     # books_path = path + "/" + "books.db"
     cur.execute(
         "ATTACH DATABASE 'books.db' AS books"
@@ -56,7 +60,11 @@ def attach_databases():
     conn.commit()
 
 def join_data(year):
-    """To select all the data joined for one year."""
+    """
+    To select all the data joined for one year.
+    Input: year on which to join data.
+    Output: nothing.
+    """
     cur.execute('''
         CREATE TABLE IF NOT EXISTS Joined (Year INTEGER, Month INTEGER, ISBN INTEGER, Book_Title TEXT, Book_Author TEXT,
         Book_Description TEXT, Book_Cover TEXT, Movie_Title TEXT, Movie_Gross INTEGER, Average_Max_Temp REAL, 
@@ -98,6 +106,9 @@ def calculate_data(data):
     Calculations: 
     1: Month | Average gross per month | Titles | Monthly temperature average | Monthly precipitation average
     2: Year | Average gross per year | Min ISBN that year | Max ISBN that year | Yearly temp average 
+
+    Input: data for all years and all months.
+    Output: Writes above calculations to csv files.
     """
     # 1
     monthly_data = []
