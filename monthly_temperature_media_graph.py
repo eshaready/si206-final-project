@@ -6,9 +6,11 @@ import matplotlib.pyplot as plt
 conn = sqlite3.connect('bell.db')
 cur = conn.cursor()
 
+year = 2013
+
 # Query data 
 cur.execute(
-    "SELECT Year, Month, Average_Temp, Book_Title, Movie_Title FROM Joined WHERE Year = 2020"
+    "SELECT Year, Month, Average_Temp, Book_Title, Movie_Title FROM Joined WHERE Year = ?", (year,)
 )
 data = cur.fetchall()
 conn.close()
@@ -17,9 +19,9 @@ print(book_titles)
 
 df = pd.DataFrame(data, columns = ["Year", "Month", "Average_Temp", "Book_Title", "Movie_Title"])
 fig, ax = plt.subplots()
-sns.barplot(x="Average_Temp", y="Month", orient="h", data=df)
-ax.bar_label(labels=book_titles)
-# g = sns.FacetGrid(df, row="Year")
-# g.map_dataframe(sns.barplot, x="Average_Temp", y="Month", orient="h")
-# ax.bar_label()
+p = sns.barplot(x="Average_Temp", y="Month", orient="h", data=df)
+ax.bar_label(p.containers[0], labels=book_titles)
+plt.title(f'Temperature by Month in {year} and Bestselling Book per Month')
+plt.xlabel('Average Temperature')
+plt.ylabel('Month')
 plt.show()
