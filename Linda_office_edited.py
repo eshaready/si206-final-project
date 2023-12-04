@@ -95,9 +95,9 @@ month = input("Choose a month to gather data for (lowercase, full month name):")
 url = f'https://www.boxofficemojo.com/month/{month}/?grossesOption=calendarGrosses&sort=year'
 scrape_info(url, month.capitalize())
 
-cursor.execute("SELECT year, month, title, gross FROM TopMonthlyReleases WHERE month = ? ORDER BY year, month", (month,))
+cursor.execute("SELECT year, month, title, gross FROM TopMonthlyReleases WHERE month = ? ORDER BY year, month", (month_string_to_int(month.capitalize()),))
 print("Top Grossing Titles Each Month (2012-2022):")
-for row in cursor.fetchall():
+for row in cursor:
     print(f"Year: {row[0]}, Month: {row[1]}, Title: {row[2]}, Gross: {row[3]}")
 
 # Close the connection
