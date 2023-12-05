@@ -65,11 +65,6 @@ def join_data(year):
     Input: year on which to join data.
     Output: nothing.
     """
-    cur.execute('''
-        CREATE TABLE IF NOT EXISTS Joined (Year INTEGER, Month INTEGER, ISBN INTEGER, Book_Title TEXT, Book_Author TEXT,
-        Book_Description TEXT, Book_Cover TEXT, Movie_Title TEXT, Movie_Gross INTEGER, Average_Max_Temp REAL, 
-        Average_Min_Temp REAL, Average_Temp REAL, Average_Precip REAL, PRIMARY KEY(Year, Month))
-    ''')
 
     cur.execute('''
         SELECT Bestsellers.Year, Bestsellers.Month, Books.ISBN, Books.Title, Books.Author, 
@@ -90,15 +85,6 @@ def join_data(year):
                     "book cover": row[6], "box office title": row[7], "box office gross": int(row[8][1:].replace(",", "")), "monthly max temp avg": row[9], 
                     "monthly min temp avg": row[10], "monthly temp avg": row[11], "monthly precip avg": row[12]})
     
-    for row in data:
-        cur.execute('''
-            INSERT OR IGNORE INTO Joined (Year, Month, ISBN, Book_Title, Book_Author, Book_Description, 
-            Book_Cover, Movie_Title, Movie_Gross, Average_Max_Temp, Average_Min_Temp, Average_Temp, Average_Precip)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
-        ''', (row["year"], row["month"], row["isbn"], row["book title"], row["book author"], row["book desc"],
-              row["book cover"], row["box office title"], row["box office gross"], row["monthly max temp avg"],
-              row["monthly min temp avg"], row["monthly temp avg"], row["monthly precip avg"], ))
-    conn.commit()
     return data
 
 def calculate_data(data):
@@ -133,7 +119,7 @@ def calculate_data(data):
         precip_sum = 0
         for year in data:
             precip_sum += year[i]["monthly temp avg"]
-        
+        # use round
         monthly_data.append({"Month": months[i],
                              "Avg gross": gross_sum / len(data),
                              "Book titles": titles,

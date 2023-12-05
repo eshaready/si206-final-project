@@ -1,26 +1,24 @@
 import sqlite3
 import matplotlib.pyplot as plt
 import seaborn as sns
-
-conn = sqlite3.connect('bell.db')
-cursor = conn.cursor()
-
-# Query the data from the 'Joined' table
-query = "SELECT Movie_Gross, Average_Temp, Month FROM Joined;"
-cursor.execute(query)
-data = cursor.fetchall()
-
-conn.close()
+import group_part
+data = group_part.data
 
 # Extracting columns for plotting
-movie_gross = [row[0] for row in data]
-average_temp = [row[1] for row in data]
-month = [str(row[2]) for row in data]
+movie_gross = []
+average_temp = []
+month = []
+for year in data:
+    for m in year:
+        movie_gross.append(m["box office gross"]/10**9)
+        average_temp.append(m["monthly temp avg"])
+        month.append(str(m["month"]))
+        
 
 # Plotting the scatter plot
 sns.scatterplot(x=movie_gross, y=average_temp, hue=month)
-plt.title('Correlation between Movie Gross and Average Temperature')
-plt.xlabel('Movie Gross')
-plt.ylabel('Average Temperature')
+plt.title('Correlation between Movie Gross and Average Temperature by Month')
+plt.xlabel('Movie Gross (billions of dollars)')
+plt.ylabel('Average Temperature (C)')
 plt.legend(labels=["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"])
 plt.show()

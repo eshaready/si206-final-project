@@ -196,12 +196,6 @@ def insert_reviews_data(conn, cur):
         print("Finished inquiring a book! Now cooling down between requests...", count, isbn)
         time.sleep(12)
 
-
-def copy_to_group_database(db_name, books_conn, books_cur):
-    path = os.path.dirname(os.path.abspath(__file__))
-    conn = sqlite3.connect(path + "/" + db_name)
-    cur = conn.cursor()
-
 # ! MAIN 
 conn, cur = create_database()
 user_input = input("Do you want to add to the Bestsellers database by year [0], populate the Books database [1], or populate the Reviews database [2]? (q for quit) ")
