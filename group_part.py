@@ -121,10 +121,10 @@ def calculate_data(data):
             precip_sum += year[i]["monthly temp avg"]
         # use round
         monthly_data.append({"Month": months[i],
-                             "Avg gross": gross_sum / len(data),
+                             "Avg gross": round(gross_sum / len(data), 2),
                              "Book titles": titles,
-                             "Temp avg": temp_sum / len(data),
-                             "Precip avg": precip_sum / len(data)})
+                             "Temp avg": round(temp_sum / len(data), 2),
+                             "Precip avg": round(precip_sum / len(data), 2)})
 
     with open("joined_data_monthly_calculations.csv", "w", newline='') as f:
         headers = ["Month", "Avg gross", "Book titles", "Temp avg", "Precip avg"]
@@ -159,10 +159,10 @@ def calculate_data(data):
             temp_sum += data[y][m]["monthly temp avg"]
         
         yearly_data.append({"Year": years[y],
-                            "Avg gross": gross_sum / 12,
+                            "Avg gross": round(gross_sum / 12, 2),
                             "Min ISBN": min_isbn,
                             "Max ISBN": max_isbn,
-                            "Avg temp": temp_sum / 12})
+                            "Avg temp": round(temp_sum / 12, 2)})
 
     with open("joined_data_yearly_calculations.csv", "w", newline='') as f:
         headers = ["Year", "Avg gross", "Min ISBN", "Max ISBN", "Avg temp"]
