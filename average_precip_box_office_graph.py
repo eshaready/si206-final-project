@@ -11,6 +11,16 @@ for year in data:
         movie_gross.append(month["box office gross"]/10**9)
         average_precip.append(month["monthly precip avg"])
 
+import group_part
+data = group_part.data
+
+movie_gross = []
+average_precip = []
+for year in data:
+    for month in year:
+        movie_gross.append(month["box office gross"]/10**9)
+        average_precip.append(month["monthly precip avg"])
+
 
 # Plotting the scatter plot
 coefficients = np.polyfit(movie_gross, average_precip, 1)
