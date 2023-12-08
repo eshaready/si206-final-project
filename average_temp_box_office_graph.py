@@ -16,6 +16,7 @@ for year in data:
         
 
 # Plotting the scatter plot
+sns.lineplot(x=movie_gross, y=average_temp, hue=month)
 sns.scatterplot(x=movie_gross, y=average_temp, hue=month)
 plt.title('Correlation between Movie Gross and Average Temperature by Month')
 plt.xlabel('Movie Gross (billions of dollars)')
