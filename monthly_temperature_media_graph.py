@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import group_part
 data = group_part.data
 
-year = 2016  # Change me!
+year = 2018  # Change me!
 year_index = group_part.years.index(year)
 
 book_titles = []
