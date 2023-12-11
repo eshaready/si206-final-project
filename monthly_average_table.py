@@ -22,7 +22,7 @@ def write_monthly_data_to_db():
     
     # Read data from averaged_by_month.csv and insert into the database
     inserted_rows = 0
-    with open('averaged_by_month.csv', 'r') as csvfile:
+    with open('weather-api/averaged_by_month.csv', 'r') as csvfile:
         reader = csv.DictReader(csvfile)
         for row in reader:
             cursor.execute('''
